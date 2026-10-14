@@ -1,0 +1,17 @@
+# /etc/systemd/system/zeppelin.service
+[Unit]
+Description=Apache Zeppelin
+After=network.target
+
+[Service]
+Type=simple
+User=zeppelin
+Group=zeppelin
+WorkingDirectory=${ZEPPELIN_HOME}
+ExecStart=${ZEPPELIN_HOME}/bin/zeppelin.sh
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+# /etc/systemd/system/knox.service
+[Unit]
+Description=Apache Knox Gateway
+After=network.target
+
+[Service]
+Type=forking
+User=knox
+Group=knox
+Environment=GATEWAY_HOME=${KNOX_HOME}
+ExecStart=${KNOX_HOME}/bin/gateway.sh start
+ExecStop=${KNOX_HOME}/bin/gateway.sh stop
+PIDFile=${KNOX_HOME}/pids/gateway.pid
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
