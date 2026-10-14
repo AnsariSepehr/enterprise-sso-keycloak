@@ -1,0 +1,16 @@
+# /etc/systemd/system/keycloak.service
+[Unit]
+Description=Keycloak SSO Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=keycloak
+Group=keycloak
+EnvironmentFile=/etc/keycloak/keycloak.env
+ExecStart=${KEYCLOAK_HOME}/bin/kc.sh start --optimized
+TimeoutStartSec=300
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

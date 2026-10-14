@@ -1,0 +1,9 @@
+-- Run as the postgres superuser. Order matters (see docs/troubleshooting.md, problem 3):
+-- the password hash format is decided when the password is SET.
+ALTER SYSTEM SET password_encryption = 'scram-sha-256';
+SELECT pg_reload_conf();
+
+-- Replace the placeholder with a strong password, via psql variable, not in git:
+--   psql -v pw="'<PASSWORD>'" -f init.sql
+CREATE ROLE sso_db_user LOGIN PASSWORD :pw;
+CREATE DATABASE sso_db OWNER sso_db_user;
