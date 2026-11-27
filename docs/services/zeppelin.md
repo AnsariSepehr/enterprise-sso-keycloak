@@ -2,7 +2,7 @@
 
 Zeppelin 0.12.1 runs on the worker node as user `zeppelin` under systemd ([unit](../../config/zeppelin/zeppelin.service.example)). Two designs were tried: direct OIDC (failed) and Knox JWT (works for sign-in).
 
-**Automation:** [`scripts/zeppelin/01-configure-knox-realm.sh`](../../scripts/zeppelin/01-configure-knox-realm.sh). Do this **after** [Knox login works](knox.md).
+**Automation:** [`scripts/zeppelin/01-configure-knox-realm.sh`](../../scripts/zeppelin/01-configure-knox-realm.sh), then [`02-classic-ui-and-admins.sh`](../../scripts/zeppelin/02-classic-ui-and-admins.sh) (logout and administrators). Do this **after** [Knox login works](knox.md).
 
 > The reverse proxy / public hostname for Zeppelin itself is not covered by the verified build notes; this document only covers the authentication wiring.
 
@@ -61,11 +61,11 @@ The only "Error" lines should be harmless `FluentPropertyBeanIntrospector` info 
 
 ## Logout
 
-Pressing **Logout** in Zeppelin signs the user out of Zeppelin **only**. Verified from Zeppelin's own front-end JavaScript: the button sends `POST /api/login/logout` as an XHR and then runs the *same* follow-up on success or failure — clears the local ticket, opens Zeppelin's internal `/login` page. It **never navigates** to `knoxJwtRealm.logout`.
+In the **new front end**, pressing **Logout** signs the user out of Zeppelin **only**. Verified from Zeppelin's own front-end JavaScript: the button sends `POST /api/login/logout` as an XHR and then runs the *same* follow-up on success or failure — clears the local ticket, opens Zeppelin's internal `/login` page. It **never navigates** to `knoxJwtRealm.logout`.
 
 So `hadoop-jwt` and the Keycloak session are still valid; the next visit goes to Knox, which finds the cookie, and the user is silently signed back in. The Knox-side `/logout` URL ([knox.md](knox.md#workaround-logout-on-the-knox-host)) does end all sessions, but Zeppelin's button does not send users there.
 
-Options discussed, **none chosen yet**:
+Options discussed first:
 
 | | Option | Note |
 |---|---|---|
@@ -74,6 +74,33 @@ Options discussed, **none chosen yet**:
 | C | accept half logout and rely on the 24 h token lifetime | shared workstations stay signed in |
 | D | re-check newer Zeppelin releases | an upstream change unifying REST/WebSocket auth under Shiro 2.x was seen in research; effect on logout *not verified* |
 
+### Resolution: the classic front end
+
+Zeppelin 0.12 ships **two front ends**, and the analysis above applies to the new one. With the **classic** front end, the Logout button was observed to follow the address in `knoxJwtRealm.logout`. With the classic interface as the default, the button sends the browser to the Knox host's `/logout` ([one logout address per application](knox.md#one-logout-address-per-application)), which clears the Knox cookies and the Keycloak session and returns to Zeppelin and its sign-in:
+
+```xml
+<!-- zeppelin-site.xml, inside <configuration>   (config/zeppelin/zeppelin-site.xml.snippet) -->
+<property><name>zeppelin.default.ui</name><value>classic</value></property>
+```
+
+[`02-classic-ui-and-admins.sh`](../../scripts/zeppelin/02-classic-ui-and-admins.sh) sets it (through [`xml_props.py`](../../scripts/lib/xml_props.py)) and restarts Zeppelin. The Keycloak client `knox` must list `https://<ZEPPELIN_HOSTNAME>/` under *Valid post logout redirect URIs*. **Test:** sign in as one user, press Logout, sign in as another user — the name at the top right must change. The classic interface is **optional from 0.12.0**, so confirm it is still included when Zeppelin is upgraded. The new interface's own button still ends only the local session.
+
 ## Roles and administrators
 
-`[urls]` protects interpreter, credential and configuration pages with `roles[admin]`. Mapping a Knox/Keycloak user to the Zeppelin `admin` role is **not configured or tested**, so it is unknown who (if anyone) can open those pages. **Also: every AD user in the realm can currently sign in and run interpreters as the `zeppelin` OS user** — restrict by Keycloak group before wider rollout ([security-checklist](../security-checklist.md)).
+The `[urls]` rules protect the interpreter, notebook-repository, configuration, credential and admin pages. Knox supplies identities but **no roles that Zeppelin maps**, so access to those pages is granted **by user name**. The rules use Zeppelin's any-of-roles-or-users filter with a list of named administrators (`ZEPPELIN_ADMINS`); a listed user can open the Interpreter page, which was observed after the change:
+
+```ini
+[main]
+anyofrolesuser = org.apache.zeppelin.utils.AnyOfRolesUserAuthorizationFilter
+
+[urls]
+/api/interpreter/** = authc, anyofrolesuser[admin, j.doe, a.smith]
+/api/notebook-repositories/** = authc, anyofrolesuser[admin, j.doe, a.smith]
+/api/configurations/** = authc, anyofrolesuser[admin, j.doe, a.smith]
+/api/credential/** = authc, anyofrolesuser[admin, j.doe, a.smith]
+/api/admin/** = authc, anyofrolesuser[admin, j.doe, a.smith]
+```
+
+Adding an administrator means adding the name to **all five lines** and restarting Zeppelin ([template](../../config/zeppelin/shiro.ini.example) and script do it from `ZEPPELIN_ADMINS`). Mapping a Keycloak **group** to a role would be cleaner and remains open work.
+
+**Every enabled directory user can still sign in and run interpreters as the `zeppelin` OS user** — the Keycloak search base was [widened](../keycloak/ad-federation.md#widening-the-search-base-users-outside-the-staff-ou) — restrict by Keycloak group before wider rollout ([security-checklist](../security-checklist.md)). If Zeppelin is ever locked out, see [break-glass.md](../break-glass.md).
