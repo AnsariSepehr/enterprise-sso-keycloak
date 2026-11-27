@@ -113,3 +113,17 @@ A separate `knoxssout.xml` topology was tried first and returned 404 — **wrong
 nginx expires both Knox cookies and redirects to Keycloak's logout endpoint (`location = /logout` in the Knox nginx template). Visiting `https://knox.example.corp/logout` and confirming on Keycloak's page leads to the Keycloak login page and another user can then sign in. Keycloak shows *"Do you want to log out?"* because no `id_token_hint` is sent. Users must be sent to this URL; **the Knox home page's own button still performs only the local logout.**
 
 Cookie names, domains and paths must match the stored cookies exactly or the browser ignores the deletion.
+
+### One logout address per application
+
+The first version of `/logout` returned the browser to the **Knox home page**. That is wrong for every other application: a user who logged out of Zeppelin landed on Knox's home page, was asked to sign in, and ended up on Knox instead of back in the application. Each application therefore gets **its own logout location**, and every return address must also be listed under *Valid post logout redirect URIs* of the Keycloak client `knox`:
+
+| Address on the Knox host | Returns to | Used by |
+|---|---|---|
+| `/logout` | Zeppelin | Zeppelin's classic UI, through `knoxJwtRealm.logout` ([zeppelin.md](zeppelin.md#logout)) |
+| `/logout/ranger` | Ranger | an nginx rule on the Ranger node ([ranger.md](ranger.md#4-logout)) |
+| `/logout/knox` | the Knox home page | the original behaviour, for users who start on Knox |
+
+The pattern for a new application is **one `location = /logout/<app>` block, one new post-logout address in Keycloak, and a way to send the application's Logout button there**. [`scripts/tools/gen-app-logout.sh`](../../scripts/tools/gen-app-logout.sh) prints the block ([template](../../config/nginx/knox.conf.example)). Grafana and Nextcloud do **not** use these addresses: they talk to Keycloak directly and carry their own sign-out address ([grafana.md](grafana.md#4-logout), [nextcloud.md](nextcloud.md#4-logout)).
+
+![A working logout ends three sessions](../img/logout-chain.png)
