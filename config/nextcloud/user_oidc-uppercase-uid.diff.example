@@ -1,0 +1,15 @@
+# ILLUSTRATION of the one-line change made by scripts/nextcloud/patch_login_controller.py.
+# Do not apply it with patch(1): line numbers differ between user_oidc versions (8.11.0 was patched).
+# docs/services/nextcloud.md, "The case problem".
+#
+# Why: the accounts come from LDAP and their user IDs are the AD objectGUID in UPPER case, the
+# Keycloak claim ldap_id carries the same GUID in lower case, and Nextcloud's lookup is case-sensitive.
+--- a/custom_apps/user_oidc/lib/Controller/LoginController.php
++++ b/custom_apps/user_oidc/lib/Controller/LoginController.php
+@@ code(): after the user ID claim is read @@
+ 		$uidAttribute = $this->providerService->getSetting($providerId, ProviderService::SETTING_MAPPING_UID, 'sub');
+ 		$userId = $this->provisioningService->getClaimValue($idTokenPayload, $uidAttribute, $providerId);
++		// enterprise-sso-keycloak: uppercase-uid
++		if ($userId !== null) { $userId = strtoupper($userId); }
+ 
+ 		if ($userId === null) {

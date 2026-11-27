@@ -27,10 +27,22 @@ Listed roughly in the order they happened. Each row says where the full story is
 | 21 | Zeppelin | `shiro.ini` garbled after pasting a heredoc | The terminal mangled the pasted text | Copy the saved intact file with `cp` instead | [services/zeppelin](services/zeppelin.md) |
 | 22 | Zeppelin | Logout button does not end the SSO session | The button never calls the Knox logout URL | Open; options in zeppelin.md, Logout | [services/zeppelin](services/zeppelin.md) |
 | 23 | Active Directory | Domain controller certificates expired; LDAPS unusable | Certificates not renewed; the automatic enrolment fails with an RPC/DCOM error | Plain LDAP used for now; root cause of the enrolment failure not found (see ad-federation.md) | [keycloak/ad-federation](keycloak/ad-federation.md) |
+| 24 | Active Directory | An enabled account is missing from Keycloak and cannot sign in | The LDAP provider searched only the staff OU; the built-in Administrator lives in the default Users container | Widen the Users DN to the domain root with an enabled-person filter | [keycloak/ad-federation](keycloak/ad-federation.md#widening-the-search-base-users-outside-the-staff-ou) |
+| 25 | Ranger | Browsers sent to an unknown address after SSO was switched on | A stale SSO attempt (other provider, other key) was already in the live file | Replace the three values with the Knox ones | [services/ranger](services/ranger.md#22-point-ranger-at-knox) |
+| 26 | Ranger | Edits seemed to have no effect | The first search and `grep` found only the packaged template; the live directory is a symlink to `conf.dist` | Check the process class path and the symlink first (`00-preflight.sh`) | [services/ranger](services/ranger.md#21-find-the-live-configuration) |
+| 27 | Ranger | First restart loops, failing every 15 s; the journal says only "failed to start" | The JMX exporter agent could not open its rules file and ends the whole JVM | Create the rules file; the cause is in `catalina.out`, not the journal | [services/ranger](services/ranger.md#23-the-restart-that-failed-for-an-unrelated-reason) |
+| 28 | Ranger | Logout returns to the UI, still signed in | The Knox cookie and the Keycloak session survive; the UI lands on `index.html?action=timeout` | nginx rule on that URL plus a Knox logout address for Ranger | [services/ranger](services/ranger.md#4-logout) |
+| 29 | Ranger | After the first rule the user still came back signed in | The intercepted request never reached Ranger, so its own session cookie survived | Expire `RANGERADMINSESSIONID` in the same response | [services/ranger](services/ranger.md#4-logout) |
+| 30 | Ranger | An SSO user cannot be promoted to Admin in the UI | *First Name* is required but the field is disabled for externally created users | Update the user through the REST API as the local admin (a guessed role endpoint returned 404) | [services/ranger](services/ranger.md#5-access-control) |
+| 31 | Grafana | *Login failed: Failed to get token from provider* | `docker stack deploy` does not read a `.env` file, so the client secret was empty | Export the variables in the shell before deploying, or use a Docker secret | [services/grafana](services/grafana.md#passing-the-secret--and-why-the-first-deployment-failed) |
+| 32 | Nextcloud | *Failed to provision the user* after a good Keycloak login | Lower-case GUID from Keycloak against upper-case stored IDs; the lookup is case-sensitive | One-line `strtoupper` patch in `user_oidc` | [services/nextcloud](services/nextcloud.md#the-case-problem-and-the-one-line-patch) |
+| 33 | Nextcloud | CSRF error when logging out after the failed attempts | A stale session in the browser | Clear the site cookies or use a private window | [services/nextcloud](services/nextcloud.md#4-logout) |
+| 34 | Exchange | No way to sign in to OWA with Keycloak | Exchange 2016 has no modern authentication and no third-party OIDC or SAML setting | Left on AD login | [services/exchange](services/exchange.md) |
+| 35 | nginx | A check run right after a change showed the old behaviour | `reload` is graceful; a `curl` in the same command line was answered by the old workers | Wait a few seconds after a reload before testing | [services/ranger](services/ranger.md#24-publish-through-nginx) |
 
 ## Mistakes worth stating plainly
 
-Early on, paths and topology names were proposed before looking at the real files; the post-logout URI field was named as the cause of a validation error when it was not; and one cookie-deletion test removed the cookies in the wrong order and proved nothing. Each was corrected once the real file or log was inspected. **Lesson: read the real config/log first; change one thing at a time.**
+Early on, paths and topology names were proposed before looking at the real files; the post-logout URI field was named as the cause of a validation error when it was not; and one cookie-deletion test removed the cookies in the wrong order and proved nothing. Each was corrected once the real file or log was inspected. Later work repeated the pattern: a Ranger role endpoint was named from memory and returned 404, a Swarm deployment was assumed to read a `.env` file, and a cause for the Nextcloud login failure was called confirmed before the code that produces that message had been read. A check run in the same command line as a graceful nginx reload also looked like a failure. **Lesson: read the real config, log or source first; change one thing at a time.**
 
 ## Generic diagnosis recipes
 
@@ -41,5 +53,10 @@ Early on, paths and topology names were proposed before looking at the real file
 | Knox 500 after login | `/opt/knox/logs/gateway.log` for `Caused by` |
 | Zeppelin fails to start | `<zeppelin-dir>/logs/zeppelin-*.log` for `ClassNotFound`/`NoSuchMethod` |
 | SAML errors | Keycloak *Events* (enable login error events) and the app's audit log |
-| "Logged out but logged straight back in" | check all three sessions: Keycloak, `pac4j.session.*`, `hadoop-jwt` |
+| "Logged out but logged straight back in" | check all three sessions: Keycloak, `pac4j.session.*`, `hadoop-jwt`; for Ranger also `RANGERADMINSESSIONID` |
+| Ranger will not start after a restart | `tail -60 <ranger>/ews/logs/catalina.out` (not only the journal); `bash scripts/ranger/00-preflight.sh` |
+| Ranger redirects to the wrong place | `grep -A1 ranger.sso <live ranger-admin-site.xml>`; which directory does the process read? |
+| Grafana "Failed to get token from provider" | `bash scripts/grafana/02-verify.sh` (secret length, `unauthorized_client` vs `invalid_client`); `docker service logs <stack>_grafana --since 10m` |
+| Nextcloud "Failed to provision the user" | `occ user:info <ID>` in both letter cases; `occ user_oidc:provider keycloak`; `tail data/nextcloud.log` |
+| A check right after an nginx change looks wrong | wait a few seconds after `reload`: old workers keep answering for a moment |
 

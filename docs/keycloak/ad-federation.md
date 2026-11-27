@@ -100,8 +100,32 @@ Click **Test connection** and **Test authentication** before saving, then **Sync
 
 - First sync: **149 users added, 0 failed**.
 - A domain account signs in at `https://sso.example.corp/realms/CORP/account` with its normal password.
-- Periodic sync left off (a daily full sync is optional).
+- Periodic synchronisation was switched on later: a **full sync every 86,400 seconds** and a **changed-users sync every 3,600 seconds** (users are imported, *Remove invalid users during searches* is on).
 - Imported users show a warning icon next to the e-mail: it only means "not verified" in Keycloak; it did not block sign-in.
+
+## Widening the search base: users outside the staff OU
+
+The provider first searched only `OU=Staff,DC=example,DC=corp` (see the table above). Accounts that live elsewhere are **invisible to Keycloak and cannot sign in**. The case that exposed it was the built-in domain **Administrator** account: it sits in the default `CN=Users` container, outside the OU, and searching Keycloak for it returned nothing although the account was enabled in Active Directory.
+
+Confirm where an account lives before changing anything:
+
+```bash
+ldapsearch -x -H ldap://<DC1_IP> -D "CN=keycloak,OU=Service Users,DC=example,DC=corp" -W \
+  -b "DC=example,DC=corp" "(sAMAccountName=<user>)" distinguishedName
+```
+
+There are two ways to include it. A second DN can be added to *Users DN* (recent Keycloak versions accept several DNs separated by a semicolon — **unverified** here). Or the search base can be widened to the whole domain and a filter used to keep out accounts that should not sign in:
+
+| Field | Value |
+|---|---|
+| Users DN | `DC=example,DC=corp` |
+| User LDAP filter | `(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))` |
+| Search scope | Subtree |
+| Referral | `ignore` |
+
+The filter keeps **enabled person accounts** and leaves out computers and disabled accounts such as Guest. A search from the domain root returns referral entries; setting *Referral* to `ignore` stops Keycloak from following them. **Preview** the result with `ldapsearch` and the same filter before saving, and read the list for **service accounts** — each one becomes a possible Keycloak user. After saving, use *Action → Sync all users*. The change was reported fixed.
+
+> **Consequence.** Enabled domain users outside the staff OU can now sign in to Keycloak too, and therefore to **every application**, including Zeppelin where they can run interpreters. This makes the restriction in the [security checklist](../security-checklist.md) more urgent. A narrower option is `(memberOf=<group DN>)` in the filter, so only one directory group is imported.
 
 ## Closing the LDAPS gap later
 

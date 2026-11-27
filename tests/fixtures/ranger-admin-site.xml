@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Reduced test fixture shaped like the packaged ranger-admin-site.xml, including the STALE SSO
+     attempt that was found in the live file (other provider, other certificate). -->
+<configuration>
+	<property>
+		<name>ranger.externalurl</name>
+		<value>http://localhost:6080</value>
+	</property>
+	<property>
+		<name>ranger.authentication.method</name>
+		<value>LDAP</value>
+	</property>
+    <property>
+    		<name>ranger.sso.providerurl</name>
+    		<value>http://stale-idp.example.corp:5205/Identity/KnoxSso/Login</value>
+    </property>
+    <property>
+    		<name>ranger.sso.publicKey</name>
+    		<value>STALEKEYSTALEKEYSTALEKEY</value>
+    </property>
+    <property>
+    		<name>ranger.sso.enabled</name>
+    		<value>true</value>
+    </property>
+    <property>
+    		<name>ranger.sso.cookiename</name>
+    		<value>hadoop-jwt</value>
+    </property>
+    <property>
+        <name>ranger.sso.browser.useragent</name>
+        <value/>
+    </property>
+</configuration>

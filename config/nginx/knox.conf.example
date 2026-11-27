@@ -28,13 +28,36 @@ server {
     }
 
     # WORKAROUND for the Knox logout problem (docs/services/knox.md, "Logout").
-    # Expires the Knox cookies and sends the browser to Keycloak's logout endpoint.
-    # Cookie names, domain and path must match the stored cookies exactly.
+    # Each location expires the Knox cookies and sends the browser to Keycloak's logout endpoint,
+    # which then returns it to ONE application. Keycloak's client "knox" must list every return
+    # address under "Valid post logout redirect URIs". Cookie names, domain and path must match
+    # the stored cookies exactly or the browser ignores the deletion.
+    # Add a block for a new application with: scripts/tools/gen-app-logout.sh <app> <hostname>
+
+    # /logout        -> Zeppelin (what Zeppelin's classic UI calls through knoxJwtRealm.logout)
     location = /logout {
         add_header Set-Cookie "hadoop-jwt=; Domain=.${DOMAIN}; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
         add_header Set-Cookie "pac4j.session.pac4jUserProfiles=; Domain=.${DOMAIN}; Path=/gateway/knoxsso/api/v1; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
         add_header Set-Cookie "pac4j.session.pac4jRequestedUrl=; Domain=.${DOMAIN}; Path=/gateway/knoxsso/api/v1; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
         add_header Cache-Control "no-store" always;
-        return 302 https://${SSO_HOSTNAME}/realms/${REALM}/protocol/openid-connect/logout?post_logout_redirect_uri=https%3A%2F%2F${KNOX_HOSTNAME}%2Fgateway%2Fhomepage%2Fhome%2F&client_id=knox;
+        return 302 https://${SSO_HOSTNAME}/realms/${REALM}/protocol/openid-connect/logout?client_id=knox&post_logout_redirect_uri=https%3A%2F%2F${ZEPPELIN_HOSTNAME}%2F;
+    }
+
+    # /logout/ranger -> Ranger (called by the nginx rule on the Ranger node, docs/services/ranger.md)
+    location = /logout/ranger {
+        add_header Set-Cookie "hadoop-jwt=; Domain=.${DOMAIN}; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
+        add_header Set-Cookie "pac4j.session.pac4jUserProfiles=; Domain=.${DOMAIN}; Path=/gateway/knoxsso/api/v1; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
+        add_header Set-Cookie "pac4j.session.pac4jRequestedUrl=; Domain=.${DOMAIN}; Path=/gateway/knoxsso/api/v1; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
+        add_header Cache-Control "no-store" always;
+        return 302 https://${SSO_HOSTNAME}/realms/${REALM}/protocol/openid-connect/logout?client_id=knox&post_logout_redirect_uri=https%3A%2F%2F${RANGER_HOSTNAME}%2F;
+    }
+
+    # /logout/knox   -> the Knox home page (the original behaviour of /logout)
+    location = /logout/knox {
+        add_header Set-Cookie "hadoop-jwt=; Domain=.${DOMAIN}; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
+        add_header Set-Cookie "pac4j.session.pac4jUserProfiles=; Domain=.${DOMAIN}; Path=/gateway/knoxsso/api/v1; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
+        add_header Set-Cookie "pac4j.session.pac4jRequestedUrl=; Domain=.${DOMAIN}; Path=/gateway/knoxsso/api/v1; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly" always;
+        add_header Cache-Control "no-store" always;
+        return 302 https://${SSO_HOSTNAME}/realms/${REALM}/protocol/openid-connect/logout?client_id=knox&post_logout_redirect_uri=https%3A%2F%2F${KNOX_HOSTNAME}%2Fgateway%2Fhomepage%2Fhome%2F;
     }
 }

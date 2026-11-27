@@ -1,0 +1,15 @@
+# Properties applied to ranger-admin-site.xml by scripts/ranger/01-configure-knox-sso.sh
+# (live file on the packaged install: ${RANGER_CONF_DIR}/ranger-admin-site.xml). docs/services/ranger.md
+#
+# The URL of Knox's SSO endpoint. Ranger redirects browsers here when there is no valid cookie.
+ranger.sso.providerurl=https://${KNOX_HOSTNAME}/gateway/knoxsso/api/v1/websso
+# The Knox certificate body on ONE line, without the BEGIN/END lines (same certificate Zeppelin trusts).
+# Ranger holds its own copy: refresh it together with Zeppelin's when Knox's certificate is replaced.
+ranger.sso.publicKey=${KNOX_CERT_BASE64}
+ranger.sso.enabled=true
+ranger.sso.cookiename=hadoop-jwt
+ranger.sso.query.param.originalurl=originalUrl
+# User agents containing these words are treated as browsers and redirected to Knox.
+ranger.sso.browser.useragent=Mozilla,chrome
+# The public address of Ranger (was http://localhost:6080 on a fresh install).
+ranger.externalurl=https://${RANGER_HOSTNAME}

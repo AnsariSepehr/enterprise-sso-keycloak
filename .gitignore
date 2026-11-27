@@ -1,0 +1,18 @@
+# local, real values - never commit
+config/env/sso.env
+.forbidden-terms
+*.env
+!*.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.jceks
+*.p7b
+keycloak.env
+# working files
+*.orig
+*.bak
+*.swp
+.DS_Store
+screenshots/raw/

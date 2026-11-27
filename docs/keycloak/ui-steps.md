@@ -22,12 +22,25 @@ Keycloak warns that the bootstrap user is temporary.
 |---|---|
 | LDAP user federation to Active Directory | [ad-federation.md](ad-federation.md) |
 | SAML client for Jira | [../services/jira.md](../services/jira.md) |
-| OIDC client `knox` | [../services/knox.md](../services/knox.md#keycloak-client-for-knox) |
+| OIDC client `knox` (also serves Zeppelin and Ranger) | [../services/knox.md](../services/knox.md#keycloak-client-for-knox) |
+| OIDC client `grafana` + group `grafana-admins` + `groups` mapper | [../services/grafana.md](../services/grafana.md#1-keycloak-side) |
+| OIDC client `nextcloud` + `ldap_id` mapper | [../services/nextcloud.md](../services/nextcloud.md#1-keycloak-side) |
 
 ## Verify
 
 - `https://sso.example.corp/realms/CORP/account` — a domain user can sign in with the normal AD password.
 - `https://sso.example.corp/realms/CORP/.well-known/openid-configuration` — returns JSON.
 - `https://sso.example.corp/realms/CORP/protocol/saml/descriptor` — returns XML (needed by Jira).
+
+### Every client at a glance
+
+| Client | Protocol | Valid redirect URI | Post-logout URIs |
+|---|---|---|---|
+| `knox` | OIDC, confidential | `https://<KNOX_HOSTNAME>/gateway/knoxsso/api/v1/websso` | Knox home, Zeppelin and Ranger addresses |
+| Jira | SAML 2.0 | assertion consumer address from the app | not used |
+| `grafana` | OIDC, confidential | `https://<GRAFANA_HOSTNAME>/login/generic_oauth` | `https://<GRAFANA_HOSTNAME>/login` |
+| `nextcloud` | OIDC, confidential | `https://<NEXTCLOUD_HOSTNAME>/apps/user_oidc/code` | `https://<NEXTCLOUD_HOSTNAME>/` |
+
+Redirect and post-logout addresses must match **exactly**: a missing post-logout address is what shows an *invalid redirect URI* error at the end of a logout.
 
 > Screenshots: put masked screenshots in `docs/img/` and link them here. Blur host names, tokens, user names and browser tabs first ([security checklist](../security-checklist.md)).

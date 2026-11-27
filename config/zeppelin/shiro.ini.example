@@ -17,6 +17,10 @@ knoxJwtRealm.publicKeyPath = ${ZEPPELIN_HOME}/conf/knox-sso.pem
 
 authc = org.apache.zeppelin.realm.jwt.KnoxAuthenticationFilter
 
+# Admin pages: allow a role OR a named user. Knox supplies identities but no role that Zeppelin
+# maps, so the administrators are listed by user name (docs/services/zeppelin.md, "Administrators").
+anyofrolesuser = org.apache.zeppelin.utils.AnyOfRolesUserAuthorizationFilter
+
 # Explicit, so only the Knox realm is ever used
 securityManager.realms = $knoxJwtRealm
 
@@ -44,9 +48,9 @@ admin = *
 /api/version = anon
 /api/cluster/address = anon
 /api/interpreter/setting/restart/** = authc
-/api/interpreter/** = authc, roles[admin]
-/api/notebook-repositories/** = authc, roles[admin]
-/api/configurations/** = authc, roles[admin]
-/api/credential/** = authc, roles[admin]
-/api/admin/** = authc, roles[admin]
+/api/interpreter/** = authc, anyofrolesuser[admin, ${ZEPPELIN_ADMINS}]
+/api/notebook-repositories/** = authc, anyofrolesuser[admin, ${ZEPPELIN_ADMINS}]
+/api/configurations/** = authc, anyofrolesuser[admin, ${ZEPPELIN_ADMINS}]
+/api/credential/** = authc, anyofrolesuser[admin, ${ZEPPELIN_ADMINS}]
+/api/admin/** = authc, anyofrolesuser[admin, ${ZEPPELIN_ADMINS}]
 /** = authc

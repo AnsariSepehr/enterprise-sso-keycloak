@@ -1,0 +1,8 @@
+# test input for scripts/lib/xml_props.py
+ranger.sso.providerurl=https://knox.example.corp/gateway/knoxsso/api/v1/websso
+ranger.sso.publicKey=MIIDajCCAlKgAw+/abc==
+ranger.sso.enabled=true
+ranger.sso.cookiename=hadoop-jwt
+ranger.sso.query.param.originalurl=originalUrl
+ranger.sso.browser.useragent=Mozilla,chrome
+ranger.externalurl=https://ranger.example.corp?a=1&b=2
