@@ -1,0 +1,9 @@
+<!-- Add inside <configuration> of ${ZEPPELIN_HOME}/conf/zeppelin-site.xml (create the file from
+     zeppelin-site.xml.template if it does not exist), then: systemctl restart zeppelin
+     The new front end's Logout button never navigates to knoxJwtRealm.logout; the classic one does,
+     which is what ends the Knox cookie and the Keycloak session. docs/services/zeppelin.md, "Logout". -->
+<property>
+  <name>zeppelin.default.ui</name>
+  <value>classic</value>
+  <description>Front end served at the root address. The classic UI is optional from Zeppelin 0.12.0.</description>
+</property>
