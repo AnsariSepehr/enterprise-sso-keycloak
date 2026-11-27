@@ -7,7 +7,13 @@ ENV_FILE="${SSO_ENV_FILE:-$REPO_ROOT/config/env/sso.env}"
 
 # Variables that may appear as ${NAME} in config/*.example files.
 RENDER_VARS="DOMAIN DOMAIN_REGEX SSO_HOSTNAME KNOX_HOSTNAME JIRA_HOSTNAME ZEPPELIN_HOSTNAME REALM \
-KEYCLOAK_HOME KNOX_HOME ZEPPELIN_HOME HADOOP_HOME TLS_CERT TLS_KEY DB_NAME DB_USER KNOX_OIDC_SECRET KC_DB_PASSWORD KC_BOOTSTRAP_ADMIN_PASSWORD"
+RANGER_HOSTNAME GRAFANA_HOSTNAME NEXTCLOUD_HOSTNAME RANGER_CONF_DIR ZEPPELIN_ADMINS GRAFANA_ADMIN_GROUP GRAFANA_VERSION SWARM_STACK \
+KEYCLOAK_HOME KNOX_HOME ZEPPELIN_HOME HADOOP_HOME TLS_CERT TLS_KEY DB_NAME DB_USER \
+KNOX_OIDC_SECRET KNOX_CERT_BASE64 KC_DB_PASSWORD KC_BOOTSTRAP_ADMIN_PASSWORD"
+
+# Variables that stay as ${NAME} in a rendered file because another tool fills them in later
+# (docker stack deploy substitutes them from the shell environment).
+export RUNTIME_VARS="GRAFANA_OIDC_SECRET"
 
 log()  { printf '\033[1;34m[%s]\033[0m %s\n' "$(date +%H:%M:%S)" "$*"; }
 warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*" >&2; }
@@ -17,7 +23,10 @@ require_root() { [ "$(id -u)" -eq 0 ] || die "Run as root (sudo)."; }
 
 load_env() {
   [ -f "$ENV_FILE" ] || die "Missing $ENV_FILE. Copy config/env/sso.env.example to config/env/sso.env and edit it."
-  set -a; . "$ENV_FILE"; set +a
+  set -a
+  # shellcheck source=/dev/null
+  . "$ENV_FILE"
+  set +a
   # "example.corp" -> "example\.corp" for use inside regular expressions
   DOMAIN_REGEX="$(printf '%s' "$DOMAIN" | sed 's/\./\\./g')"
   export DOMAIN_REGEX
