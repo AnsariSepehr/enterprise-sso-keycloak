@@ -5,7 +5,7 @@
 #      e.g. your real domain, host names, user names. See .forbidden-terms.example.
 # Exit code 1 if anything is found. Run before every commit (see CONTRIBUTING.md) and in CI.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 fail=0
 files() { git ls-files -co --exclude-standard 2>/dev/null || find . -type f -not -path './.git/*'; }
 scan() {  # scan LABEL REGEX
