@@ -18,6 +18,6 @@ sudo -u keycloak "$KEYCLOAK_HOME/bin/kc.sh" build
 systemctl daemon-reload
 systemctl enable --now keycloak
 log "Waiting for Keycloak (up to 120 s)"
-for i in $(seq 1 60); do curl -fsI http://127.0.0.1:8080 >/dev/null 2>&1 && break; sleep 2; done
+for _ in $(seq 1 60); do curl -fsI http://127.0.0.1:8080 >/dev/null 2>&1 && break; sleep 2; done
 journalctl -u keycloak -n 15 --no-pager
 log "Next: create the permanent admin in the UI (docs/keycloak/ui-steps.md), then remove the bootstrap lines from /etc/keycloak/keycloak.env"
