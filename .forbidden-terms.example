@@ -1,0 +1,6 @@
+# Copy to .forbidden-terms (git-ignored). One regex per line. Put YOUR real values here so that
+# check-secrets.sh stops you from ever committing them. Examples (replace with your own):
+# yourcompany\.ir
+# 10\.20\.30\.
+# real-hostname-01
+# realuser\.name
